@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Domain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .chat-message { max-width: 85%; padding: 16px; border-radius: 20px; margin-bottom: 16px; }
+        .file-item { transition: all 0.2s; }
+    </style>
+</head>
+<body class="bg-gray-950 text-white">
+    <div class="min-h-screen" id="app">
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="min-h-screen flex items-center justify-center">
+            <div class="bg-gray-900 p-10 rounded-3xl w-full max-w-md">
+                <h1 class="text-4xl font-bold text-indigo-500 text-center mb-2">Vector Domain</h1>
+                <p class="text-center text-gray-400 mb-8">AI Document Intelligence</p>
+
+                <div class="flex mb-8 border-b border-gray-700">
+                    <button onclick="showTab(0)" id="tab-login" class="tab-active flex-1 py-3 font-medium">Login</button>
+                    <button onclick="showTab(1)" id="tab-register" class="flex-1 py-3 text-gray-400">Register</button>
+                </div>
+
+                <div id="login-form">
+                    <input id="login-username" type="text" placeholder="Username" class="w-full bg-gray-800 p-4 rounded-2xl mb-4">
+                    <input id="login-password" type="password" placeholder="Password" class="w-full bg-gray-800 p-4 rounded-2xl mb-6">
+                    <button onclick="login()" class="w-full bg-indigo-600 py-4 rounded-2xl font-semibold">Login</button>
+                </div>
+
+                <div id="register-form" class="hidden">
+                    <input id="reg-username" type="text" placeholder="Username" class="w-full bg-gray-800 p-4 rounded-2xl mb-4">
+                    <input id="reg-email" type="email" placeholder="Email" class="w-full bg-gray-800 p-4 rounded-2xl mb-4">
+                    <input id="reg-password" type="password" placeholder="Password" class="w-full bg-gray-800 p-4 rounded-2xl mb-6">
+                    <button onclick="register()" class="w-full bg-indigo-600 py-4 rounded-2xl font-semibold">Create Account</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="hidden">
+            <div class="max-w-7xl mx-auto p-6">
+                <header class="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 class="text-4xl font-bold text-indigo-500">Vector Domain</h1>
+                        <p class="text-gray-400">Welcome, <span id="username-display" class="font-semibold text-indigo-400"></span></p>
+                    </div>
+                    <div>
+                        <button onclick="logout()" class="text-red-500 hover:text-red-400">Logout</button>
+                    </div>
+                </header>
+
+                <div class="grid grid-cols-12 gap-6">
+                    <!-- Documents -->
+                    <div class="col-span-4 bg-gray-900 rounded-3xl p-6">
+                        <h2 class="text-xl font-semibold mb-4">📁 Your Documents</h2>
+                        <button onclick="uploadFile()" class="w-full bg-indigo-600 hover:bg-indigo-700 py-3 rounded-2xl mb-6 font-medium">
+                            + Upload Document(s)
+                        </button>
+                        <div id="docs-list" class="space-y-3 max-h-[500px] overflow-y-auto"></div>
+                    </div>
+
+                    <!-- Chat -->
+                    <div class="col-span-8 bg-gray-900 rounded-3xl p-6 flex flex-col h-[78vh]">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-semibold">💬 Ask Your Documents</h2>
+                            <span id="current-file" class="text-sm text-emerald-400"></span>
+                        </div>
+                        <div id="chat-area" class="flex-1 overflow-y-auto space-y-6 mb-6 p-4 bg-gray-950 rounded-3xl"></div>
+                        
+                        <div class="flex gap-3">
+                            <input id="user-input" type="text" placeholder="Ask a question about your documents..." 
+                                   class="flex-1 bg-gray-800 border border-gray-700 rounded-2xl px-6 py-4 focus:outline-none focus:border-indigo-500"
+                                   onkeypress="if(event.key==='Enter') sendMessage()">
+                            <button onclick="sendMessage()" class="bg-indigo-600 px-8 rounded-2xl font-medium">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="file-upload" accept=".pdf,.txt,.md" class="hidden" onchange="handleUpload(event)" multiple>
+
+    <script>
+        let token = localStorage.getItem('token');
+
+        function showTab(n) {
+            document.getElementById('login-form').classList.toggle('hidden', n === 1);
+            document.getElementById('register-form').classList.toggle('hidden', n === 0);
+            document.getElementById('tab-login').classList.toggle('tab-active', n === 0);
+            document.getElementById('tab-register').classList.toggle('tab-active', n === 1);
+        }
+
+        async function register() {
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value;
+
+            const res = await fetch('/auth/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, email, password})
+            });
+
+            if (res.ok) {
+                alert("✅ Account created! Logging in...");
+                document.getElementById('login-username').value = username;
+                document.getElementById('login-password').value = password;
+                login();
+            } else {
+                alert("Registration failed");
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            const res = await fetch('/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({username, password})
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                localStorage.setItem('token', data.access_token);
+                token = data.access_token;
+                showDashboard(username);
+            } else {
+                alert("❌ Invalid credentials");
+            }
+        }
+
+        function showDashboard(username) {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            document.getElementById('username-display').textContent = username;
+            loadDocuments();
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            location.reload();
+        }
+
+        async function handleUpload(e) {
+            const files = e.target.files;
+            if (files.length === 0) return;
+
+            let successCount = 0;
+            for (let file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                const res = await fetch('/documents/upload', {
+                    method: 'POST',
+                    headers: {'Authorization': `Bearer ${token}`},
+                    body: formData
+                });
+                if (res.ok) successCount++;
+            }
+            alert(`${successCount} file(s) uploaded successfully!`);
+            loadDocuments();
+        }
+
+        function uploadFile() {
+            if (!token) return alert("Please login first");
+            document.getElementById('file-upload').click();
+        }
+
+        async function loadDocuments() {
+            const list = document.getElementById('docs-list');
+            list.innerHTML = "<p class='text-gray-400'>Loading documents...</p>";
+
+            try {
+                const res = await fetch('/documents/list', {
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                if (!res.ok) throw new Error();
+                const docs = await res.json();
+
+                if (docs.length === 0) {
+                    list.innerHTML = "<p class='text-gray-400'>No documents yet. Upload one!</p>";
+                } else {
+                    let html = '';
+                    docs.forEach(d => {
+                        html += `
+                            <div class="file-item bg-gray-800 p-4 flex justify-between items-center cursor-pointer hover:bg-gray-700" onclick="selectFile('\( {d.document_id}', ' \){d.filename}')">
+                                <span>📄 ${d.filename}</span>
+                                <button onclick="event.stopImmediatePropagation(); deleteFile('${d.document_id}');" class="text-red-400 hover:text-red-500">🗑</button>
+                            </div>
+                        `;
+                    });
+                    list.innerHTML = html;
+                }
+            } catch(e) {
+                list.innerHTML = "<p class='text-gray-400'>No documents found or error loading</p>";
+            }
+        }
+
+        function selectFile(docId, filename) {
+            document.getElementById('current-file').textContent = `Working on: ${filename}`;
+        }
+
+        async function deleteFile(document_id) {
+            if (!confirm("Delete this file?")) return;
+            await fetch(`/documents/delete/${document_id}`, {
+                method: 'DELETE',
+                headers: {'Authorization': `Bearer ${token}`}
+            });
+            loadDocuments();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const query = input.value.trim();
+            if (!query) return;
+
+            addChatMessage("You", query, true);
+            input.value = "";
+
+            try {
+                const res = await fetch('/documents/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({query})
+                });
+
+                const data = await res.json();
+                addChatMessage("AI Assistant", data.answer || "Sorry, I couldn't generate an answer.", false);
+            } catch (e) {
+                addChatMessage("AI Assistant", "Error: Please try again", false);
+            }
+        }
+
+        function addChatMessage(sender, text, isUser) {
+            const area = document.getElementById('chat-area');
+            const div = document.createElement('div');
+            div.className = isUser ? "flex justify-end" : "flex justify-start";
+            div.innerHTML = `
+                <div class="chat-message ${isUser ? 'bg-indigo-600' : 'bg-gray-800'}">
+                    <strong>${sender}:</strong><br>
+                    ${text}
+                </div>
+            `;
+            area.appendChild(div);
+            area.scrollTop = area.scrollHeight;
+        }
+
+        // Auto login
+        if (token) {
+            showDashboard("User");
+        }
+    </script>
+</body>
+</html>
