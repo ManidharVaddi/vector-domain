@@ -1,6 +1,7 @@
 # main.py
 import sys
 from pathlib import Path
+import os
 
 ROOT_DIR = Path(__file__).parent
 sys.path.append(str(ROOT_DIR))
@@ -49,5 +50,12 @@ async def serve_frontend():
 async def root():
     return {"frontend": "/app", "status": "running"}
 
+# ... (keep all the code above)
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
+else:
+    # For Render / production servers
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)))

@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: vector-domain
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_API_KEY
+        value: your_groq_key_here
+      - key: SECRET_KEY
+        value: supersecretkeyforjwt2026
