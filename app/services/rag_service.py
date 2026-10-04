@@ -57,26 +57,28 @@ def process_document(file_path: str, filename: str):
     
 
 
-    
 def ask_question(query: str):
-    """Answer question using RAG"""
-    vector_store = get_vector_store()
-    
-    llm = ChatGroq(
-        model="llama-3.1-8b-instant",   # Updated to working model
-        temperature=0.3,
-        groq_api_key=os.getenv("GROQ_API_KEY")
-    )
-    
-    qa_chain = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=vector_store.as_retriever(search_kwargs={"k": 3}),
-        return_source_documents=True
-    )
-    
-    result = qa_chain({"query": query})
-    return {
-        "answer": result["result"],
-        "source_documents": len(result["source_documents"])
-    }
+    try:
+        vector_store = get_vector_store()
+        llm = ChatGroq(
+            model="openai/gpt-oss-120b",  
+            temperature=0.3,
+            groq_api_key=os.getenv("GROQ_API_KEY"),
+        )
+        
+        qa_chain = RetrievalQA.from_chain_type(
+            llm=llm,
+            chain_type="stuff",
+            retriever=vector_store.as_retriever(search_kwargs={"k": 3}),
+            return_source_documents=True
+        )
+        
+        result = qa_chain.invoke({"query": query})   # use .invoke instead of ()
+        return {
+            "answer": result["result"],
+            "source_documents": len(result["source_documents"])
+        }
+    except Exception as e:
+        print("==== ASK ERROR ====")
+        print(e)
+        return {"answer": f"Error: {str(e)}", "source_documents": 0}
